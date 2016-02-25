@@ -5,13 +5,14 @@ A JavaFX application that copies random files from a source to a destination usi
 
 ## Features
 * Limits the number of files to copy
-* Limits the copy by the disk space in bytes
+* Limits the bytes to be copied into the destinaion
 * Filter the available files by several extensions
 
-### Coming soon
+### To be done
 * Include hidden files
-* Rename duplicate file names
 * Ability to specify new extensions to the CheckComboBox
+* Filter the files by matching some string in the name
+* Fix special characters shown on the TextArea in UTF-8
 
 ## License
 RandomFileCopierFX is licensed under Apache License 2.0

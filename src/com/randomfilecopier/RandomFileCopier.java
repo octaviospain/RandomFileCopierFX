@@ -19,12 +19,12 @@ package com.randomfilecopier;
 import static java.nio.file.StandardCopyOption.COPY_ATTRIBUTES;
 
 import java.io.File;
-import java.io.FileFilter;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -32,6 +32,8 @@ import java.util.Map;
 import java.util.Random;
 
 import org.docopt.Docopt;
+
+import com.randomfilecopier.Utils.ExtensionFileFilter;
 
 /**
  * This class copies random files that are located in a folder and it
@@ -44,8 +46,7 @@ import org.docopt.Docopt;
  */
 public class RandomFileCopier {
 	
-	
-	private File sourceDir, targetDir;
+	private Path sourcePath, targetPath;
 	private int maxFiles;
 	private long maxBytes, copiedBytes;
 	private List<File> randomFiles;
@@ -61,17 +62,17 @@ public class RandomFileCopier {
 	 * @param targetPath The target folder to copy the files
 	 * @param maxFiles The maximum number of files to copy. 0 will copy all the files
 	 */
-	public RandomFileCopier(String sourcePath, String targetPath, int maxFiles) {
-		sourceDir = new File(sourcePath);
-		targetDir = new File(targetPath.startsWith("/") ? targetPath : "/"+ targetPath);
+	public RandomFileCopier(String source, String target, int maxFiles) {
+		sourcePath = Paths.get(source, "");
+		targetPath = Paths.get(target.startsWith("/") ? target : "/"+ target, "");
 		this.maxFiles = maxFiles;
 		verbose = false;
 		rnd = new Random();
 		randomFiles = new ArrayList<>();
 		out = System.out;
-		maxBytes = targetDir.getUsableSpace();		
 		filter = new ExtensionFileFilter();
 		copiedBytes = 0;
+		maxBytes = getUsableBytesInTarget(targetPath.toFile());
 	}
 	
 	/**
@@ -104,17 +105,21 @@ public class RandomFileCopier {
 	 * @param maxBytesToCopy
 	 */
 	public void setMaxBytesToCopy(long maxBytesToCopy) {
-		File root = targetDir;
-		while(root.getParentFile() != null) 
-				root = root.getParentFile();
-		if(maxBytesToCopy < root.getUsableSpace())
+		if(maxBytesToCopy < getUsableBytesInTarget(targetPath.toFile()))
 			maxBytes = maxBytesToCopy;
 		else
-			maxBytes = root.getUsableSpace();
+			maxBytes = getUsableBytesInTarget(targetPath.toFile());
 	}
 	
 	public long getMaxBytesToCopy() {
-		return maxBytes <= targetDir.getUsableSpace() ? maxBytes : targetDir.getUsableSpace();
+		return maxBytes <= getUsableBytesInTarget(targetPath.toFile()) ? maxBytes : getUsableBytesInTarget(targetPath.toFile());
+	}
+	
+	private long getUsableBytesInTarget(File targetDestination) {
+		File root = targetDestination;
+		while(root.getParentFile() != null) 
+				root = root.getParentFile();
+		return root.getUsableSpace();
 	}
 	
 	/**
@@ -144,7 +149,7 @@ public class RandomFileCopier {
 		copiedBytes = 0;
 		randomFiles.clear();
 		out.println("Scanning source directory... ");
-		List<File> allFiles = getAllFilesInFolder(sourceDir, filter, 0);
+		List<File> allFiles = Utils.getAllFilesInFolder(sourcePath.toFile(), filter, 0);
 		long allFilesBytes = allFiles.stream().mapToLong(File::length).sum();
 		out.println(allFiles.size() + " files found");
 		int selectedIndex;
@@ -182,11 +187,12 @@ public class RandomFileCopier {
 		for(File f: randomFiles)
 			if(!Thread.currentThread().isInterrupted())	{
 				Path filePath = f.toPath();
-				Files.copy(filePath, targetDir.toPath().resolve(ensureFileName(f.getName())), options);
+				String path = filePath.subpath(filePath.getNameCount()-3, filePath.getNameCount()).toString();
+				Files.copy(filePath, targetPath.resolve(ensureFileName(f.getName())), options);
 				if(verbose)
-					out.println("Copied "+".../"+filePath.subpath(filePath.getNameCount()-3, filePath.getNameCount()) +" [" + f.length() + " bytes]");
+					out.println("Copied " + ".../" + path + " [" + Utils.byteSizeString(f.length(), 2) + "]");
 			}
-		out.println("Done. " + copiedBytes + " bytes copied");
+		out.println("Done. " + Utils.byteSizeString(copiedBytes, 4) + " copied");
 	}
 	
 	/**
@@ -197,154 +203,17 @@ public class RandomFileCopier {
 	 */
 	private String ensureFileName(String name) {
 		String newName = name;
-		if(targetDir.toPath().resolve(name).toFile().exists()) {
+		if(targetPath.resolve(name).toFile().exists()) {
 			int pos = name.lastIndexOf(".");
 			newName = name.substring(0, pos) + "(1)." + name.substring(pos+1);
 		}
-		while(targetDir.toPath().resolve(newName).toFile().exists()) {
+		while(targetPath.resolve(newName).toFile().exists()) {
 			int posL = newName.lastIndexOf("(");
 			int posR = newName.lastIndexOf(")");
 			int num = Integer.parseInt(newName.substring(posL+1, posR));
 			newName = newName.substring(0, posL+1) + ++num +newName.substring(posR);
 		}
 		return newName;
-	}
-
-	/**
-	 * Retrieves a list with at most <tt>maxFiles</tt> files that are in a folder or
-	 * any of the subfolders in that folder satisfying a condition.
-	 * If <tt>maxFilesRequired</tt> is 0 all the files will be retrieved.
-	 * 
-	 * @param rootFolder The folder from within to find the files
-	 * @param filter The FileFilter condition
-	 * @param maxFilesRequired Maximun number of files in the List. 0 indicates no maximum
-	 * @return The list containing all the files
-	 * @throws IllegalArgumentException Thrown if <tt>maxFilesRequired</tt> argument is less than zero
-	 */
-	private List<File> getAllFilesInFolder(File rootFolder, FileFilter filter, int maxFilesRequired) throws IllegalArgumentException {
-		List<File> finalFiles = new ArrayList<>();
-		if(!Thread.currentThread().isInterrupted()) {
-			if(maxFilesRequired < 0)
-				throw new IllegalArgumentException("maxFilesRequired argument less than zero");
-			if(rootFolder == null || filter == null)
-				throw new IllegalArgumentException("folder or filter null");
-			if(!rootFolder.exists() || !rootFolder.isDirectory())
-				throw new IllegalArgumentException("rootFolder argument is not a directory");
-			File[] subFiles = rootFolder.listFiles(filter);
-			int remainingFiles = maxFilesRequired;
-			if(maxFilesRequired == 0)	// No max = add all files
-				finalFiles.addAll(Arrays.asList(subFiles));
-			else if(maxFilesRequired < subFiles.length) {	// There are more valid files than the required
-					finalFiles.addAll(Arrays.asList(Arrays.copyOfRange(subFiles, 0, maxFilesRequired)));
-					remainingFiles -= finalFiles.size();		// Zero files remaining
-				}
-			else if (subFiles.length > 0) {
-						finalFiles.addAll(Arrays.asList(subFiles));	// Add all valid files
-						remainingFiles -= finalFiles.size();		// If remainingFiles == 0, end;
-					}
-			
-			if(maxFilesRequired == 0 || remainingFiles > 0) {
-				File[] rootSubFolders = rootFolder.listFiles(file -> {return file.isDirectory();});
-				int sbFldrsCount = 0;
-				while((sbFldrsCount < rootSubFolders.length) && !Thread.currentThread().isInterrupted()) {
-					File subFolder = rootSubFolders[sbFldrsCount++];
-					List<File> subFolderFiles = getAllFilesInFolder(subFolder, filter, remainingFiles);
-					finalFiles.addAll(subFolderFiles);
-					if(remainingFiles > 0)
-						remainingFiles = maxFilesRequired - finalFiles.size();
-					if(maxFilesRequired > 0 && remainingFiles == 0)
-						break;
-				}
-			}
-		}
-		return finalFiles;
-	}
-	
-	/**
-	 * This class implements <code>{@link java.io.FileFilter}</code> to
-	 * accept a file with some of the given extensions. If no extensions are given
-	 * the file is accepted. The extensions must be given without the dot.
-	 * 
-	 * @author Octavio Calleya
-	 *
-	 */
-	public class ExtensionFileFilter implements FileFilter {
-		
-		private String[] extensions;
-		private int numExtensions;
-		
-		public ExtensionFileFilter(String... extensions) {
-			this.extensions = extensions;
-			numExtensions = extensions.length;
-		}
-		
-		public ExtensionFileFilter() {
-			extensions = new String[] {};
-			numExtensions = 0;
-		}
-		
-		public void addExtension(String ext) {
-			boolean contains = false;
-			for(String e: extensions)
-				if(e != null && ext.equals(e))
-					contains = true;
-			if(!contains) {
-				ensureArrayLength();
-				extensions[numExtensions++] = ext;
-			}
-		}
-		
-		public void removeExtension(String ext) {
-			for(int i=0; i<extensions.length; i++)
-				if(extensions[i].equals(ext)) {
-					extensions[i] = null;
-					numExtensions--;
-				}
-			extensions = Arrays.copyOf(extensions, numExtensions);
-		}
-		
-		public boolean hasExtension(String ext) {
-			for(String e: extensions)
-				if(ext.equals(e))
-					return true;
-			return false;
-		}
-		
-		public void setExtensions(String... extensions) {
-			if(extensions == null)
-				this.extensions = new String[] {};
-			else
-				this.extensions = extensions;
-			numExtensions = this.extensions.length;
-		}
-		
-		public String[] getExtensions() {
-			return extensions;
-		}
-		
-		private void ensureArrayLength() {
-			if(numExtensions == extensions.length)
-				extensions = Arrays.copyOf(extensions, numExtensions == 0 ? 1 : 2*numExtensions);
-			
-		}
-
-		@Override
-		public boolean accept(File pathname) {
-			boolean res = false;
-			if(!pathname.isDirectory() && !pathname.isHidden()) {
-				int pos = pathname.getName().lastIndexOf(".");
-				if(pos != -1) {
-					String extension = pathname.getName().substring(pos+1);
-					if(numExtensions == 0)
-						res = true;
-					else
-						for(String requiredExtension: extensions)
-							if(extension.equals(requiredExtension))
-								res = true;
-				}
-			}
-			return res;
-		}		
 	}
 	
 	/***************************		Command line usage		***************************/
