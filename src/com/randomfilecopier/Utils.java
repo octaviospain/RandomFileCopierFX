@@ -18,6 +18,7 @@ package com.randomfilecopier;
 
 import java.io.File;
 import java.io.FileFilter;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -25,7 +26,7 @@ import java.util.List;
 /**
  * Class that does some useful operations with files, directories, strings
  * or other operations utilities to be used for the application
- * 
+ *
  * @author Octavio Calleya
  *
  */
@@ -35,7 +36,7 @@ public class Utils {
 	 * Retrieves a {@link List} with at most <tt>maxFiles</tt> files that are in a folder or
 	 * any of the subfolders in that folder satisfying a condition.
 	 * If <tt>maxFilesRequired</tt> is 0 all the files will be retrieved.
-	 * 
+	 *
 	 * @param rootFolder The folder from within to find the files
 	 * @param filter The {@link FileFilter} condition
 	 * @param maxFilesRequired Maximun number of files in the List. 0 indicates no maximum
@@ -56,14 +57,14 @@ public class Utils {
 			if(maxFilesRequired == 0)	// No max = add all files
 				finalFiles.addAll(Arrays.asList(subFiles));
 			else if(maxFilesRequired < subFiles.length) {	// There are more valid files than the required
-					finalFiles.addAll(Arrays.asList(Arrays.copyOfRange(subFiles, 0, maxFilesRequired)));
-					remainingFiles -= finalFiles.size();		// Zero files remaining
-				}
-				else if (subFiles.length > 0) {
-						finalFiles.addAll(Arrays.asList(subFiles));	// Add all valid files
-						remainingFiles -= finalFiles.size();		// If remainingFiles == 0, end;
-					}
-			
+				finalFiles.addAll(Arrays.asList(Arrays.copyOfRange(subFiles, 0, maxFilesRequired)));
+				remainingFiles -= finalFiles.size();		// Zero files remaining
+			}
+			else if (subFiles.length > 0) {
+				finalFiles.addAll(Arrays.asList(subFiles));	// Add all valid files
+				remainingFiles -= finalFiles.size();		// If remainingFiles == 0, end;
+			}
+
 			if(maxFilesRequired == 0 || remainingFiles > 0) {
 				File[] rootSubFolders = rootFolder.listFiles(file -> {return file.isDirectory();});
 				int sbFldrsCount = 0;
@@ -80,11 +81,11 @@ public class Utils {
 		}
 		return finalFiles;
 	}
-	
+
 	/**
 	 * Returns a {@link String} representing the given <tt>bytes</tt>, with a textual representation
 	 * depending if the given amount can be represented as KB, MB, GB or TB
-	 * 
+	 *
 	 * @param bytes The <tt>bytes</tt> to be represented
 	 * @return The <tt>String</tt> that represents the given bytes
 	 * @throws IllegalArgumentException Thrown if <tt>bytes</tt> is negative
@@ -107,12 +108,12 @@ public class Utils {
 		sizeText = bytesAmount + (remainderStr.equals("0") ? "" : ","+remainderStr) + " " + bytesUnits[u];
 		return sizeText;
 	}
-	
+
 	/**
 	 * Returns a {@link String} representing the given <tt>bytes</tt>, with a textual representation
 	 * depending if the given amount can be represented as KB, MB, GB or TB, limiting the number
 	 * of decimals, if there are any
-	 * 
+	 *
 	 * @param bytes The <tt>bytes</tt> to be represented
 	 * @param numDecimals The maximum number of decimals to be shown after the comma
 	 * @return The <tt>String</tt> that represents the given bytes
@@ -124,14 +125,13 @@ public class Utils {
 		String byteSizeString = byteSizeString(bytes);
 		int pos = byteSizeString.lastIndexOf(",");
 		int unitPos = byteSizeString.lastIndexOf(" ");
-		int exponentPos = byteSizeString.lastIndexOf("E");
 		if(pos != -1 && numDecimals > 0) {
 			String abs = byteSizeString.substring(0, pos+1);
-			int rem = Integer.valueOf(byteSizeString.substring(pos+1, exponentPos != -1 && exponentPos < unitPos? exponentPos : unitPos));
+			int rem = Integer.valueOf(byteSizeString.substring(pos+1, unitPos));
 			short numDigits = (short) (""+rem).length();
 			int remainderIndex = numDecimals < numDigits ? numDecimals : numDigits;
 			int magnitudeEsc = (int)Math.pow(10, (numDigits-remainderIndex));
-			int boundedRemainder = rem/magnitudeEsc; 
+			int boundedRemainder = rem/magnitudeEsc;
 			int remainderRem = rem%magnitudeEsc;
 			if(boundedRemainder != 0) {
 				int a = 5*magnitudeEsc/10;
@@ -142,30 +142,53 @@ public class Utils {
 		}
 		return byteSizeString;
 	}
-	
+
+
+	/**
+	 * Ensures that the file name given is unique in the target directory, appending
+	 * (1), (2)... (n+1) to the file name in case it already exists
+	 * @param fileName The string of the file name
+	 * @return The modified string
+	 */
+	public static String ensureFileName(Path targetPath, String fileName) {
+		String newName = fileName;
+		if(targetPath.resolve(fileName).toFile().exists()) {
+			int pos = fileName.lastIndexOf(".");
+			newName = fileName.substring(0, pos) + "(1)." + fileName.substring(pos+1);
+		}
+		while(targetPath.resolve(newName).toFile().exists()) {
+			int posL = newName.lastIndexOf("(");
+			int posR = newName.lastIndexOf(")");
+			int num = Integer.parseInt(newName.substring(posL+1, posR));
+			newName = newName.substring(0, posL+1) + ++num +newName.substring(posR);
+		}
+		return newName;
+	}
+
+
 	/**
 	 * This class implements <code>{@link java.io.FileFilter}</code> to
 	 * accept a file with some of the given extensions. If no extensions are given
 	 * the file is accepted. The extensions must be given without the dot.
-	 * 
+	 *
 	 * @author Octavio Calleya
 	 *
 	 */
 	public static class ExtensionFileFilter implements FileFilter {
-		
+
 		private String[] extensions;
 		private int numExtensions;
-		
+
 		public ExtensionFileFilter(String... extensions) {
 			this.extensions = extensions;
 			numExtensions = extensions.length;
 		}
-		
+
 		public ExtensionFileFilter() {
 			extensions = new String[] {};
 			numExtensions = 0;
 		}
-		
+
 		public void addExtension(String ext) {
 			boolean contains = false;
 			for(String e: extensions)
@@ -176,7 +199,7 @@ public class Utils {
 				extensions[numExtensions++] = ext;
 			}
 		}
-		
+
 		public void removeExtension(String ext) {
 			for(int i=0; i<extensions.length; i++)
 				if(extensions[i].equals(ext)) {
@@ -185,14 +208,14 @@ public class Utils {
 				}
 			extensions = Arrays.copyOf(extensions, numExtensions);
 		}
-		
+
 		public boolean hasExtension(String ext) {
 			for(String e: extensions)
 				if(ext.equals(e))
 					return true;
 			return false;
 		}
-		
+
 		public void setExtensions(String... extensions) {
 			if(extensions == null)
 				this.extensions = new String[] {};
@@ -200,15 +223,15 @@ public class Utils {
 				this.extensions = extensions;
 			numExtensions = this.extensions.length;
 		}
-		
+
 		public String[] getExtensions() {
 			return extensions;
 		}
-		
+
 		private void ensureArrayLength() {
 			if(numExtensions == extensions.length)
 				extensions = Arrays.copyOf(extensions, numExtensions == 0 ? 1 : 2*numExtensions);
-			
+
 		}
 
 		@Override
@@ -227,6 +250,6 @@ public class Utils {
 				}
 			}
 			return res;
-		}		
+		}
 	}
 }

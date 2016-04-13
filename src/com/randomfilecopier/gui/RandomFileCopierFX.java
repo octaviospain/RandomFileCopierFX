@@ -20,7 +20,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.util.Arrays;
 
 import org.controlsfx.control.CheckComboBox;
 
@@ -102,16 +101,27 @@ public class RandomFileCopierFX extends Application {
 	@FXML
 	public void initialize() {
 		textAreaPrinter = new PrintStream(new CustomOutputStream(logTA));
+		addExtensionsCheckComboBox();
+		setButtonActions();
+		setTextFieldsFilters();
+	}
+
+	private void addExtensionsCheckComboBox() {
 		extensionsList = FXCollections.observableArrayList(EXTENSIONS);
 		extensionsCCB = new CheckComboBox<>(extensionsList);
 		extensionsCCB.setPrefWidth(80);
+
 		Label extensionsLabel = new Label("Only extensions:");
 		extensionsLabel.setPadding(new Insets(0, 10, 0, 10));
+
 		extensionsHBox = new HBox(extensionsLabel, extensionsCCB);
 		extensionsHBox.setAlignment(Pos.CENTER);
 		HBox.setHgrow(extensionsCCB, Priority.SOMETIMES);
 		HBox.setMargin(extensionsCCB, new Insets(0, 10, 0, 10));
 		optionsGP.add(extensionsHBox, 2, 0);
+	}
+
+	private void setButtonActions() {
 		openSourceBT.setOnMouseClicked(event -> {
 			source = chooseDirectory();
 			if(source != null)
@@ -122,13 +132,34 @@ public class RandomFileCopierFX extends Application {
 			if(destination != null) {
 				destinationTF.setText(destination.toString());
 				File root = destination;
-				while(root.getParentFile() != null) 
-						root = root.getParentFile();
+				while(root.getParentFile() != null)
+					root = root.getParentFile();
 				destinationBytesSpace = root.getUsableSpace();
 				maxBytesTF.setText(""+destinationBytesSpace);;
 			}
 		});
-		sourceTF.textProperty().addListener(l -> {if(!sourceTF.getText().equals("")) sourceChanged = true;});
+
+		copyStopBT.disableProperty().bind(Bindings.createBooleanBinding(() -> {
+			return !(new File(sourceTF.textProperty().get()).isDirectory() && new File(destinationTF.textProperty().get()).isDirectory());
+		}, sourceTF.textProperty(), destinationTF.textProperty()));
+
+		copyStopBT.setOnMouseClicked(event -> {
+			if(copyStopBT.getText().equals("Copy!")) {
+				copy();
+				copyStopBT.setText("Abort");
+			}
+			else {
+				abort();
+				copyStopBT.setText("Copy!");
+			}
+		});
+	}
+
+	private void setTextFieldsFilters() {
+		sourceTF.textProperty().addListener(l -> {
+			if(!sourceTF.getText().equals(""))
+				sourceChanged = true;
+		});
 		sourceTF.focusedProperty().addListener(l -> {
 			if(sourceChanged) {
 				File enteredSource = new File(sourceTF.getText());
@@ -141,7 +172,10 @@ public class RandomFileCopierFX extends Application {
 					source = enteredSource;
 			}
 		});
-		destinationTF.textProperty().addListener(l -> {if(!destinationTF.getText().equals("")) destinationChanged = true;});
+		destinationTF.textProperty().addListener(l -> {
+			if(!destinationTF.getText().equals(""))
+				destinationChanged = true;
+		});
 		destinationTF.focusedProperty().addListener(l -> {
 			if(destinationChanged) {
 				File enteredDestination = new File(destinationTF.getText());
@@ -155,24 +189,11 @@ public class RandomFileCopierFX extends Application {
 				else {
 					destination = enteredDestination;
 					File root = destination;
-					while(root.getParentFile() != null) 
-							root = root.getParentFile();
+					while(root.getParentFile() != null)
+						root = root.getParentFile();
 					destinationBytesSpace = root.getUsableSpace();
 					maxBytesTF.setText(""+destinationBytesSpace);
 				}
-			}			
-		});
-		copyStopBT.disableProperty().bind(Bindings.createBooleanBinding(() -> {
-			return !(new File(sourceTF.textProperty().get()).isDirectory() && new File(destinationTF.textProperty().get()).isDirectory());
-		}, sourceTF.textProperty(), destinationTF.textProperty()));
-		copyStopBT.setOnMouseClicked(event -> {
-			if(copyStopBT.getText().equals("Copy!")) {			
-				copy();
-				copyStopBT.setText("Abort");
-			}
-			else {
-				abort();
-				copyStopBT.setText("Copy!");
 			}
 		});
 		maxFilesTF.addEventFilter(KeyEvent.KEY_TYPED, event -> {
@@ -217,12 +238,11 @@ public class RandomFileCopierFX extends Application {
 	}
 	
 	private void copy() {
+		int maxFiles = Integer.parseInt(maxFilesTF.getText());
 		ObservableList<String> selectedExtensions = extensionsCCB.getCheckModel().getCheckedItems();
-		String[] stringExtensions = new String[selectedExtensions.size()];
-		int i = 0;
-		for(String s: selectedExtensions)
-			stringExtensions[i++] = s;
-		copyThread = new RandomFileCopierThread(source, destination, Integer.parseInt(maxFilesTF.getText()), stringExtensions);
+		String[] stringExtensions =	selectedExtensions.stream().map(s -> ((String) s).substring(1)).toArray(String[]::new);
+
+		copyThread = new RandomFileCopierThread(source, destination, maxFiles, stringExtensions);
 		copyThread.start();
 	}
 	
@@ -234,9 +254,8 @@ public class RandomFileCopierFX extends Application {
 		
 		private RandomFileCopier copier;
 		
-		public RandomFileCopierThread(File src, File tgt, int max, String[] extensions) {
-			copier = new RandomFileCopier(src.toString(), tgt.toString(), max, textAreaPrinter);
-			extensions = Arrays.stream(extensions).map(s -> ((String)s).substring(1)).toArray(String[]::new);
+		public RandomFileCopierThread(File source, File target, int maxFiles, String[] extensions) {
+			copier = new RandomFileCopier(source.toString(), target.toString(), maxFiles, textAreaPrinter);
 			copier.setFilterExtensions(extensions);
 			copier.setVerbose(true);
 			copier.setMaxBytesToCopy(Long.parseLong(maxBytesTF.getText()));
@@ -247,7 +266,10 @@ public class RandomFileCopierFX extends Application {
 			try {
 				copier.randomCopy();
 			} catch (IOException e) {
-				Platform.runLater(() -> {showWarningDialog("Source/target directory doesn't exist or is corrupt"); logTA.appendText("ERROR");});
+				Platform.runLater(() -> {
+					showWarningDialog("Source/target directory doesn't exist or is corrupt");
+					logTA.appendText("ERROR");
+				});
 			}
 			Platform.runLater(() -> copyStopBT.setText("Copy!"));
 		}
@@ -264,9 +286,7 @@ public class RandomFileCopierFX extends Application {
 		
 		@Override
 		public void write(int b) throws IOException {
-			Platform.runLater(() -> {
-				textArea.appendText(String.valueOf((char)b));
-			});
+			Platform.runLater(() -> textArea.appendText(String.valueOf((char) b)));
 		}
 	}
 }
