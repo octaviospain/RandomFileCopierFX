@@ -16,7 +16,6 @@
 
 package com.transgressoft.randomfilecopier.gui;
 
-import com.randomfilecopier.*;
 import com.transgressoft.randomfilecopier.*;
 import javafx.application.*;
 import javafx.beans.binding.*;
@@ -141,8 +140,8 @@ public class RandomFileCopierFX extends Application {
 		});
 
 		copyStopBT.disableProperty().bind(Bindings.createBooleanBinding(() ->
-				!(new File(sourceTF.textProperty().get()).isDirectory() &&
-				new File(destinationTF.textProperty().get()).isDirectory())
+				!new File(sourceTF.textProperty().get()).isDirectory() ||
+				!new File(destinationTF.textProperty().get()).isDirectory()
 		, sourceTF.textProperty(), destinationTF.textProperty()));
 
 		copyStopBT.setOnMouseClicked(event -> {
@@ -158,8 +157,8 @@ public class RandomFileCopierFX extends Application {
 	}
 
 	private void setTextFieldsFilters() {
-		sourceTF.textProperty().addListener(l -> {
-			if(sourceTF.getText().isEmpty())
+		sourceTF.textProperty().addListener((obs, oldText, newText) -> {
+			if(newText != null)
 				sourceChanged = true;
 		});
 		sourceTF.focusedProperty().addListener(l -> {
@@ -174,8 +173,8 @@ public class RandomFileCopierFX extends Application {
 					source = enteredSource;
 			}
 		});
-		destinationTF.textProperty().addListener(l -> {
-			if(destinationTF.getText().isEmpty())
+		destinationTF.textProperty().addListener((obs, oldText, newText) -> {
+			if(newText != null)
 				destinationChanged = true;
 		});
 		destinationTF.focusedProperty().addListener(l -> {
