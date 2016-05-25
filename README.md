@@ -10,7 +10,7 @@ A JavaFX application that copies random files from a source to a destination usi
 
 ### To be done
 * Include hidden files
-* Ability to specify new extensions to the CheckComboBox
+* Ability to specify a new extension to the CheckComboBox
 * Filter the files by matching some string in the name
 * Fix special characters shown on the TextArea in UTF-8
 

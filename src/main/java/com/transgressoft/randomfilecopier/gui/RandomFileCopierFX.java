@@ -14,54 +14,53 @@
  * limitations under the License.
  */
 
-package com.randomfilecopier.gui;
+package com.transgressoft.randomfilecopier.gui;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.PrintStream;
+import com.randomfilecopier.*;
+import com.transgressoft.randomfilecopier.*;
+import javafx.application.*;
+import javafx.beans.binding.*;
+import javafx.collections.*;
+import javafx.fxml.*;
+import javafx.geometry.*;
+import javafx.scene.*;
+import javafx.scene.control.*;
+import javafx.scene.control.Alert.*;
+import javafx.scene.input.*;
+import javafx.scene.layout.*;
+import javafx.stage.*;
+import org.controlsfx.control.*;
 
-import org.controlsfx.control.CheckComboBox;
-
-import com.randomfilecopier.RandomFileCopier;
-
-import javafx.application.Application;
-import javafx.application.Platform;
-import javafx.beans.binding.Bindings;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
-import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.Scene;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Alert.AlertType;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextArea;
-import javafx.scene.control.TextField;
-import javafx.scene.input.KeyEvent;
-import javafx.scene.layout.AnchorPane;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.stage.DirectoryChooser;
-import javafx.stage.Stage;
+import java.io.*;
 
 /**
  * @author Octavio Calleya
- *
+ * @version 0.1
  */
 public class RandomFileCopierFX extends Application {
 	
-	private final String[] EXTENSIONS = {".txt", ".xml", ".pdf", ".mp3", ".wav", ".flac", ".m4a", ".jpg", ".png", ".bmp",
+	private static final String[] EXTENSIONS = {".txt", ".xml", ".pdf", ".mp3", ".wav", ".flac", ".m4a", ".jpg", ".png", ".bmp",
 			 							 ".avi", ".mpg",".java", ".c", ".cpp", ".py", ".html", ".css", ".js"};
-	
+
+	private static final String COPY_TEXT = "Copy!";
+	private static final String DIRECTORY_ERROR_TEXT = "Source/target directory doesn't exist or is corrupt";
+	private static final String TARGET_WARNING_TEXT = "Target directory doesn't exist or is not a directory";
+	private static final String SOURCE_WARNING_TEXT = "Source directory doesn't exist or is not a directory";
+
 	@FXML
-	private Button openSourceBT, openDestinationBT, copyStopBT;
+	private Button openSourceBT;
 	@FXML
-	private TextField sourceTF, destinationTF, maxFilesTF, maxBytesTF;
+	private Button openDestinationBT;
+	@FXML
+	private Button copyStopBT;
+	@FXML
+	private TextField sourceTF;
+	@FXML
+	private TextField destinationTF;
+	@FXML
+	private TextField maxFilesTF;
+	@FXML
+	private TextField maxBytesTF;
 	@FXML
 	private TextArea logTA;
 	@FXML
@@ -72,11 +71,13 @@ public class RandomFileCopierFX extends Application {
 	private CheckComboBox<String> extensionsCCB;
 	
 	private Stage primaryStage;
-	private File source, destination;
+	private File source;
+	private File destination;
 	private ObservableList<String> extensionsList;
 	private RandomFileCopierThread copyThread;
 	private PrintStream textAreaPrinter;
-	private boolean sourceChanged, destinationChanged;
+	private boolean sourceChanged;
+	private boolean destinationChanged;
 	private long destinationBytesSpace;
 	
 	public static void main(String[] args) {
@@ -135,56 +136,57 @@ public class RandomFileCopierFX extends Application {
 				while(root.getParentFile() != null)
 					root = root.getParentFile();
 				destinationBytesSpace = root.getUsableSpace();
-				maxBytesTF.setText(""+destinationBytesSpace);;
+				maxBytesTF.setText(Long.toString(destinationBytesSpace));
 			}
 		});
 
-		copyStopBT.disableProperty().bind(Bindings.createBooleanBinding(() -> {
-			return !(new File(sourceTF.textProperty().get()).isDirectory() && new File(destinationTF.textProperty().get()).isDirectory());
-		}, sourceTF.textProperty(), destinationTF.textProperty()));
+		copyStopBT.disableProperty().bind(Bindings.createBooleanBinding(() ->
+				!(new File(sourceTF.textProperty().get()).isDirectory() &&
+				new File(destinationTF.textProperty().get()).isDirectory())
+		, sourceTF.textProperty(), destinationTF.textProperty()));
 
 		copyStopBT.setOnMouseClicked(event -> {
-			if(copyStopBT.getText().equals("Copy!")) {
+			if(copyStopBT.getText().equals(COPY_TEXT )) {
 				copy();
 				copyStopBT.setText("Abort");
 			}
 			else {
 				abort();
-				copyStopBT.setText("Copy!");
+				copyStopBT.setText(COPY_TEXT);
 			}
 		});
 	}
 
 	private void setTextFieldsFilters() {
 		sourceTF.textProperty().addListener(l -> {
-			if(!sourceTF.getText().equals(""))
+			if(sourceTF.getText().isEmpty())
 				sourceChanged = true;
 		});
 		sourceTF.focusedProperty().addListener(l -> {
 			if(sourceChanged) {
 				File enteredSource = new File(sourceTF.getText());
 				if(!enteredSource.isDirectory()) {
-					sourceTF.setText("");
+					sourceTF.clear();
 					sourceChanged = false;
-					showWarningDialog("Source directory doesn't exist or is not a directory");
+					showWarningDialog(SOURCE_WARNING_TEXT);
 				}
 				else
 					source = enteredSource;
 			}
 		});
 		destinationTF.textProperty().addListener(l -> {
-			if(!destinationTF.getText().equals(""))
+			if(destinationTF.getText().isEmpty())
 				destinationChanged = true;
 		});
 		destinationTF.focusedProperty().addListener(l -> {
 			if(destinationChanged) {
 				File enteredDestination = new File(destinationTF.getText());
 				if(!enteredDestination.isDirectory()) {
-					destinationTF.setText("");
+					destinationTF.clear();
 					destinationChanged = false;
 					destinationBytesSpace = 0;
-					maxBytesTF.setText(""+0);
-					showWarningDialog("Target directory doesn't exist or is not a directory");
+					maxBytesTF.setText(Integer.toString(0));
+					showWarningDialog(TARGET_WARNING_TEXT);
 				}
 				else {
 					destination = enteredDestination;
@@ -192,7 +194,7 @@ public class RandomFileCopierFX extends Application {
 					while(root.getParentFile() != null)
 						root = root.getParentFile();
 					destinationBytesSpace = root.getUsableSpace();
-					maxBytesTF.setText(""+destinationBytesSpace);
+					maxBytesTF.setText(Long.toString(destinationBytesSpace));
 				}
 			}
 		});
@@ -217,9 +219,9 @@ public class RandomFileCopierFX extends Application {
 				try {
 					long enteredMaxBytes = Long.parseLong(maxBytesTF.getText());
 					if(enteredMaxBytes > destinationBytesSpace)
-						maxBytesTF.setText(""+destinationBytesSpace);
+						maxBytesTF.setText(Long.toString(destinationBytesSpace));
 				} catch (NumberFormatException e) {
-					maxBytesTF.setText(""+destinationBytesSpace);
+					maxBytesTF.setText(Long.toString(destinationBytesSpace));
 				}
 		});
 	}
@@ -240,7 +242,7 @@ public class RandomFileCopierFX extends Application {
 	private void copy() {
 		int maxFiles = Integer.parseInt(maxFilesTF.getText());
 		ObservableList<String> selectedExtensions = extensionsCCB.getCheckModel().getCheckedItems();
-		String[] stringExtensions =	selectedExtensions.stream().map(s -> ((String) s).substring(1)).toArray(String[]::new);
+		String[] stringExtensions =	selectedExtensions.stream().map(s -> s.substring(1)).toArray(String[]::new);
 
 		copyThread = new RandomFileCopierThread(source, destination, maxFiles, stringExtensions);
 		copyThread.start();
@@ -267,11 +269,11 @@ public class RandomFileCopierFX extends Application {
 				copier.randomCopy();
 			} catch (IOException e) {
 				Platform.runLater(() -> {
-					showWarningDialog("Source/target directory doesn't exist or is corrupt");
-					logTA.appendText("ERROR");
+					showWarningDialog(DIRECTORY_ERROR_TEXT);
+					logTA.appendText("ERROR: " + e.getMessage());
 				});
 			}
-			Platform.runLater(() -> copyStopBT.setText("Copy!"));
+			Platform.runLater(() -> copyStopBT.setText(COPY_TEXT));
 		}
 	}
 	
