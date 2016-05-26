@@ -34,7 +34,7 @@ import java.io.*;
 
 /**
  * @author Octavio Calleya
- * @version 0.1
+ * @version 0.2.1
  */
 public class RandomFileCopierFX extends Application {
 	
