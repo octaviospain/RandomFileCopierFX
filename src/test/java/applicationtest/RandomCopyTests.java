@@ -41,7 +41,7 @@ public class RandomCopyTests {
 
     @Test
     public void writeInvalidTarget() {
-        fx.clickOn("#destinationTF").write("rootfolderthatdoesntexist");
+        fx.clickOn("#destinationTF").write("targetfolderthatdoesntexist");
 
         fx.clickOn("#rootAP");
 
