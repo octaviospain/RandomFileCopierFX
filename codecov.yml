@@ -1,0 +1,12 @@
+codecov:
+  branch: master
+
+coverage:
+  precision: 2
+  round: up
+
+  ignore:
+      - "com/transgressoft/util/*"
+      - "com/transgressoft/randomfilecopier/RandomFileCopier.java"
+      - "org/*"
+      - "test/*"

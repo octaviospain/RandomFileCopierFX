@@ -33,13 +33,16 @@ import org.controlsfx.control.*;
 import java.io.*;
 
 /**
+ * Graphic user interface class.
+ *
  * @author Octavio Calleya
  * @version 0.2.1
  */
-public class RandomFileCopierFX extends Application {
-	
-	private static final String[] EXTENSIONS = {".txt", ".xml", ".pdf", ".mp3", ".wav", ".flac", ".m4a", ".jpg", ".png", ".bmp",
-			 							 ".avi", ".mpg",".java", ".c", ".cpp", ".py", ".html", ".css", ".js"};
+public class RandomFileCopierGui extends Application {
+
+	private static final String[] EXTENSIONS = {".txt", ".xml", ".pdf", ".mp3", ".wav", ".flac", ".m4a", ".jpg", ".png",
+												".bmp", ".avi", ".mpg", ".java", ".c", ".cpp", ".py", ".html", ".css",
+												".js"};
 
 	private static final String COPY_TEXT = "Copy!";
 	private static final String DIRECTORY_ERROR_TEXT = "Source/target directory doesn't exist or is corrupt";
@@ -68,7 +71,7 @@ public class RandomFileCopierFX extends Application {
 	private GridPane optionsGP;
 	private HBox extensionsHBox;
 	private CheckComboBox<String> extensionsCCB;
-	
+
 	private Stage primaryStage;
 	private File source;
 	private File destination;
@@ -78,7 +81,7 @@ public class RandomFileCopierFX extends Application {
 	private boolean sourceChanged;
 	private boolean destinationChanged;
 	private long destinationBytesSpace;
-	
+
 	public static void main(String[] args) {
 		launch(args);
 	}
@@ -86,10 +89,8 @@ public class RandomFileCopierFX extends Application {
 	@Override
 	public void start(Stage primaryStage) throws Exception {
 		this.primaryStage = primaryStage;
-		FXMLLoader loader = new FXMLLoader();
-		loader.setLocation(getClass().getResource("/layout.fxml"));
-		rootAP = (AnchorPane) loader.load();
-		
+		rootAP = FXMLLoader.load(getClass().getResource("/layout.fxml"));
+
 		Scene scene = new Scene(rootAP, 700, 400);
 		primaryStage.setMinHeight(450);
 		primaryStage.setMinWidth(700);
@@ -97,13 +98,15 @@ public class RandomFileCopierFX extends Application {
 		primaryStage.setScene(scene);
 		primaryStage.show();
 	}
-	
+
 	@FXML
 	public void initialize() {
 		textAreaPrinter = new PrintStream(new CustomOutputStream(logTA));
 		addExtensionsCheckComboBox();
 		setButtonActions();
-		setTextFieldsFilters();
+		configureSourceTextField();
+		configureDestinationTextField();
+		configureMaxFilesTextField();
 	}
 
 	private void addExtensionsCheckComboBox() {
@@ -124,28 +127,29 @@ public class RandomFileCopierFX extends Application {
 	private void setButtonActions() {
 		openSourceBT.setOnMouseClicked(event -> {
 			source = chooseDirectory();
-			if(source != null)
+			if (source != null) {
 				sourceTF.setText(source.toString());
+			}
 		});
 		openDestinationBT.setOnMouseClicked(event -> {
 			destination = chooseDirectory();
-			if(destination != null) {
+			if (destination != null) {
 				destinationTF.setText(destination.toString());
 				File root = destination;
-				while(root.getParentFile() != null)
+				while (root.getParentFile() != null)
 					root = root.getParentFile();
 				destinationBytesSpace = root.getUsableSpace();
 				maxBytesTF.setText(Long.toString(destinationBytesSpace));
 			}
 		});
 
-		copyStopBT.disableProperty().bind(Bindings.createBooleanBinding(() ->
-				!new File(sourceTF.textProperty().get()).isDirectory() ||
-				!new File(destinationTF.textProperty().get()).isDirectory()
-		, sourceTF.textProperty(), destinationTF.textProperty()));
+		copyStopBT.disableProperty().bind(Bindings.createBooleanBinding(
+				() -> ! new File(sourceTF.textProperty().get()).isDirectory() || ! new File(
+						destinationTF.textProperty().get()).isDirectory(), sourceTF.textProperty(),
+				destinationTF.textProperty()));
 
 		copyStopBT.setOnMouseClicked(event -> {
-			if(copyStopBT.getText().equals(COPY_TEXT )) {
+			if (copyStopBT.getText().equals(COPY_TEXT)) {
 				copy();
 				copyStopBT.setText("Abort");
 			}
@@ -156,31 +160,37 @@ public class RandomFileCopierFX extends Application {
 		});
 	}
 
-	private void setTextFieldsFilters() {
+	private void configureSourceTextField() {
 		sourceTF.textProperty().addListener((obs, oldText, newText) -> {
-			if(newText != null)
+			if (newText != null) {
 				sourceChanged = true;
+			}
 		});
 		sourceTF.focusedProperty().addListener(l -> {
-			if(sourceChanged) {
+			if (sourceChanged) {
 				File enteredSource = new File(sourceTF.getText());
-				if(!enteredSource.isDirectory()) {
+				if (! enteredSource.isDirectory()) {
 					sourceTF.clear();
 					sourceChanged = false;
 					showWarningDialog(SOURCE_WARNING_TEXT);
 				}
-				else
+				else {
 					source = enteredSource;
+				}
 			}
 		});
+	}
+
+	private void configureDestinationTextField() {
 		destinationTF.textProperty().addListener((obs, oldText, newText) -> {
-			if(newText != null)
+			if (newText != null) {
 				destinationChanged = true;
+			}
 		});
 		destinationTF.focusedProperty().addListener(l -> {
-			if(destinationChanged) {
+			if (destinationChanged) {
 				File enteredDestination = new File(destinationTF.getText());
-				if(!enteredDestination.isDirectory()) {
+				if (! enteredDestination.isDirectory()) {
 					destinationTF.clear();
 					destinationChanged = false;
 					destinationBytesSpace = 0;
@@ -190,101 +200,112 @@ public class RandomFileCopierFX extends Application {
 				else {
 					destination = enteredDestination;
 					File root = destination;
-					while(root.getParentFile() != null)
+					while (root.getParentFile() != null)
 						root = root.getParentFile();
 					destinationBytesSpace = root.getUsableSpace();
 					maxBytesTF.setText(Long.toString(destinationBytesSpace));
 				}
 			}
 		});
+	}
+
+	private void configureMaxFilesTextField() {
 		maxFilesTF.addEventFilter(KeyEvent.KEY_TYPED, event -> {
-			if(!event.getCharacter().matches("[0-9]"))
+			if (! event.getCharacter().matches("[0-9]")) {
 				event.consume();
+			}
 		});
 		maxFilesTF.focusedProperty().addListener(l -> {
-			if(!maxFilesTF.isFocused())
+			if (! maxFilesTF.isFocused()) {
 				try {
 					Integer.parseInt(maxFilesTF.getText());
-				} catch (NumberFormatException e) {
+				}
+				catch (NumberFormatException e) {
 					maxFilesTF.setText("0");
 				}
+			}
 		});
 		maxBytesTF.addEventFilter(KeyEvent.KEY_TYPED, event -> {
-			if(!event.getCharacter().matches("[0-9]"))
+			if (! event.getCharacter().matches("[0-9]")) {
 				event.consume();
+			}
 		});
 		maxBytesTF.focusedProperty().addListener(l -> {
-			if(!maxBytesTF.isFocused())
+			if (! maxBytesTF.isFocused()) {
 				try {
 					long enteredMaxBytes = Long.parseLong(maxBytesTF.getText());
-					if(enteredMaxBytes > destinationBytesSpace)
+					if (enteredMaxBytes > destinationBytesSpace) {
 						maxBytesTF.setText(Long.toString(destinationBytesSpace));
-				} catch (NumberFormatException e) {
+					}
+				}
+				catch (NumberFormatException e) {
 					maxBytesTF.setText(Long.toString(destinationBytesSpace));
 				}
+			}
 		});
 	}
-	
+
+	private File chooseDirectory() {
+		DirectoryChooser chooser = new DirectoryChooser();
+		chooser.setTitle("Choose folder");
+		return chooser.showDialog(primaryStage);
+	}
+
+	private void copy() {
+		int maxFiles = Integer.parseInt(maxFilesTF.getText());
+		ObservableList<String> selectedExtensions = extensionsCCB.getCheckModel().getCheckedItems();
+		String[] stringExtensions = selectedExtensions.stream().map(s -> s.substring(1)).toArray(String[]::new);
+
+		copyThread = new RandomFileCopierThread(source, destination, maxFiles, stringExtensions);
+		copyThread.start();
+	}
+
+	private void abort() {
+		copyThread.interrupt();
+	}
+
 	private void showWarningDialog(String message) {
 		Alert alert = new Alert(AlertType.WARNING);
 		alert.setTitle("Warning");
 		alert.setContentText(message);
 		alert.showAndWait();
 	}
-	
-	private File chooseDirectory() {
-		DirectoryChooser chooser = new DirectoryChooser();
-		chooser.setTitle("Choose folder");
-		return chooser.showDialog(primaryStage);
-	}
-	
-	private void copy() {
-		int maxFiles = Integer.parseInt(maxFilesTF.getText());
-		ObservableList<String> selectedExtensions = extensionsCCB.getCheckModel().getCheckedItems();
-		String[] stringExtensions =	selectedExtensions.stream().map(s -> s.substring(1)).toArray(String[]::new);
 
-		copyThread = new RandomFileCopierThread(source, destination, maxFiles, stringExtensions);
-		copyThread.start();
-	}
-	
-	private void abort() {
-		copyThread.interrupt();
-	}
-	
 	private class RandomFileCopierThread extends Thread {
-		
+
 		private RandomFileCopier copier;
-		
+
 		public RandomFileCopierThread(File source, File target, int maxFiles, String[] extensions) {
 			copier = new RandomFileCopier(source.toString(), target.toString(), maxFiles, textAreaPrinter);
 			copier.setFilterExtensions(extensions);
 			copier.setVerbose(true);
 			copier.setMaxBytesToCopy(Long.parseLong(maxBytesTF.getText()));
 		}
-		
+
 		@Override
 		public void run() {
 			try {
 				copier.randomCopy();
-			} catch (IOException e) {
+			}
+			catch (IOException exception) {
 				Platform.runLater(() -> {
 					showWarningDialog(DIRECTORY_ERROR_TEXT);
-					logTA.appendText("ERROR: " + e.getMessage());
+					logTA.appendText("ERROR: " + exception.getMessage());
 				});
 			}
 			Platform.runLater(() -> copyStopBT.setText(COPY_TEXT));
 		}
 	}
-	
+
 	private class CustomOutputStream extends OutputStream {
 
 		private TextArea textArea;
-		
+
 		public CustomOutputStream(TextArea textArea) {
 			super();
 			this.textArea = textArea;
 		}
-		
+
 		@Override
 		public void write(int b) throws IOException {
 			Platform.runLater(() -> textArea.appendText(String.valueOf((char) b)));
