@@ -6,7 +6,7 @@ coverage:
   round: up
 
   ignore:
-      - "com/transgressoft/util/*"
-      - "com/transgressoft/randomfilecopier/RandomFileCopier.java"
-      - "org/*"
+      - "src/com/transgressoft/util/*"
+      - "src/com/transgressoft/randomfilecopier/RandomFileCopier.java"
+      - "src/org/*"
       - "test/*"
