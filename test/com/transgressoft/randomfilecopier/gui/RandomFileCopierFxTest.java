@@ -49,7 +49,6 @@ public class RandomFileCopierFxTest {
         });
 
         sourceTestPath = Paths.get("test-resources", "10testfiles");
-//        destinationTestPath = Paths.get("test-resources", "nonexistentfolder");
     }
 
     @Before

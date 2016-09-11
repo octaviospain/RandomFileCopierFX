@@ -6,4 +6,9 @@ WORKDIR /code
 
 ADD . /code/RandomFileCopierFX
 
-#·docker run -v /tmp/.X10-unix:/tmp/.X11-unix -e DISPLAY=unix$DISPLAY {image_name}
+RUN apt-get install xvfb
+RUN Xvfb :99 &>/dev/null &
+RUN export DISPLAY=:99
+RUN sh -e /etc/init.d/xvfb start
+
+# docker run -v /tmp/.X10-unix:/tmp/.X11-unix -e DISPLAY=unix$DISPLAY {image_name}
