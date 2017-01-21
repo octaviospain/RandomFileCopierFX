@@ -1,18 +1,19 @@
-/**
- * Copyright 2016 Octavio Calleya
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+/******************************************************************************
+ * Copyright 2016, 2017 Octavio Calleya                                       *
+ *                                                                            *
+ * Licensed under the Apache License, Version 2.0 (the "License");            *
+ * you may not use this file except in compliance with the License.           *
+ * You may obtain a copy of the License at                                    *
+ *                                                                            *
+ * http://www.apache.org/licenses/LICENSE-2.0                                 *
+ *                                                                            *
+ * Unless required by applicable law or agreed to in writing, software        *
+ * distributed under the License is distributed on an "AS IS" BASIS,          *
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.   *
+ * See the License for the specific language governing permissions and        *
+ * limitations under the License.                                             *
+ *                                                                            *
+ ******************************************************************************/
 
 package com.transgressoft.util;
 
@@ -38,73 +39,92 @@ public class TransgressoftUtils {
 	 * any of the subfolders in that folder satisfying a condition.
 	 * If <tt>maxFilesRequired</tt> is 0 all the files will be retrieved.
 	 *
-	 * @param rootFolder The folder from within to find the files
-	 * @param filter The {@link FileFilter} condition
-	 * @param maxFilesRequired Maximun number of files in the List. 0 indicates no maximum
+	 * @param rootFolder       The folder from within to find the files
+	 * @param filter           The {@link FileFilter} condition
+	 * @param maxFilesRequired Maximum number of files in the List. 0 indicates no maximum
+	 *
 	 * @return The list containing all the files
+	 *
 	 * @throws IllegalArgumentException Thrown if <tt>maxFilesRequired</tt> argument is less than zero
 	 */
 	public static List<File> getAllFilesInFolder(File rootFolder, FileFilter filter, int maxFilesRequired) {
-		if(maxFilesRequired < 0)
-			throw new IllegalArgumentException("maxFilesRequired argument less than zero");
-		if(rootFolder == null || filter == null)
-			throw new IllegalArgumentException("folder or filter null");
-		if(!rootFolder.exists() || !rootFolder.isDirectory())
-			throw new IllegalArgumentException("rootFolder argument is not a directory");
-
 		List<File> finalFiles = new ArrayList<>();
-		int remainingFiles = maxFilesRequired;
-		if(!Thread.currentThread().isInterrupted()) {
+		if (! Thread.currentThread().isInterrupted()) {
+			if (maxFilesRequired < 0)
+				throw new IllegalArgumentException("maxFilesRequired argument less than zero");
+			if (rootFolder == null || filter == null)
+				throw new IllegalArgumentException("folder or filter null");
+			if (! rootFolder.exists() || ! rootFolder.isDirectory())
+				throw new IllegalArgumentException("rootFolder argument is not a directory");
 
-			File[] filesInFolder = rootFolder.listFiles(filter);
-			int numFilesInFolder = filesInFolder.length;
+			int remainingFiles = addFilesDependingMax(finalFiles, rootFolder.listFiles(filter), maxFilesRequired);
 
-			if(maxFilesRequired == 0)
-				finalFiles.addAll(Arrays.asList(filesInFolder));
-			else if(maxFilesRequired < numFilesInFolder) {
-
-				Random rnd = new Random();
-				List<Integer> selectedFiles = new ArrayList<>();
-				while(remainingFiles <= maxFilesRequired) {
-
-					int randomInt = rnd.nextInt(numFilesInFolder);
-					if(!selectedFiles.contains(randomInt)) {
-						finalFiles.add(filesInFolder[randomInt]);
-						selectedFiles.add(randomInt);
-						remainingFiles--;
-					}
-				}
-			} else if(numFilesInFolder > 0) {
-				finalFiles.addAll(Arrays.asList(filesInFolder));
-				remainingFiles -= finalFiles.size();
-			}
-
-			if(maxFilesRequired == 0 || remainingFiles > 0) {
-
-				File[] subfolders = rootFolder.listFiles(File::isDirectory);
-				int numSubfolders = subfolders.length;
-				int foldersCount = 0;
-				Random rnd = new Random();
-				List<Integer> selectedFolders = new ArrayList<>();
-				while((foldersCount < numSubfolders) && !Thread.currentThread().isInterrupted()) {
-
-					int randomInt = rnd.nextInt(numSubfolders);
-					if(!selectedFolders.contains(randomInt)) {
-
-						File subfolder = subfolders[randomInt];
-						List<File> filesInSubfolders = getAllFilesInFolder(subfolder, filter, remainingFiles);
-						finalFiles.addAll(filesInSubfolders);
-						foldersCount++;
-					}
-
-					if(remainingFiles > 0)
-						remainingFiles = maxFilesRequired - finalFiles.size();
-					if(maxFilesRequired > 0 && remainingFiles == 0)
-						break;
-				}
+			if (maxFilesRequired == 0 || remainingFiles > 0) {
+				File[] rootSubFolders = rootFolder.listFiles(File::isDirectory);
+				addFilesFromFolders(finalFiles, rootSubFolders, maxFilesRequired, remainingFiles, filter);
 			}
 		}
 		return finalFiles;
+	}
+
+	/**
+	 * Add files to a {@link List} depending a {@code maxFilesRequired} parameter.
+	 * <ul>
+	 *     <li>
+	 *         If it's 0, all files are added.
+	 *     </li>
+	 *     <li>
+	 *         If it's greater than the actual number of files, all files are added too.
+	 *     </li>
+	 *     <li>
+	 *         If it's less than the actual number of files, the required number
+	 *         of files are added
+	 *     </li>
+	 * </ul>
+	 *
+	 * @param files            The collection of final files
+	 * @param subFiles         An Array of files to add to the collection
+	 * @param maxFilesRequired The maximum number of files to add to the collection
+	 *
+	 * @return The remaining number of files to be added
+	 */
+	private static int addFilesDependingMax(List<File> files, File[] subFiles, int maxFilesRequired) {
+		int remainingFiles = maxFilesRequired;
+		if (maxFilesRequired == 0)    						// No max = add all files
+			files.addAll(Arrays.asList(subFiles));
+		else if (maxFilesRequired < subFiles.length) {    	// There are more valid files than the required
+			files.addAll(Arrays.asList(Arrays.copyOfRange(subFiles, 0, maxFilesRequired)));
+			remainingFiles -= files.size();        			// Zero files remaining in the folder
+		}
+		else if (subFiles.length > 0) {
+			files.addAll(Arrays.asList(subFiles));   		// Add all valid files
+			remainingFiles -= files.size();
+		}
+		return remainingFiles;
+	}
+
+	/**
+	 * Adds files to a {@link List} from several folders depending of a maximum required files,
+	 * the remaining files to be added, using a {@link FileFilter}.
+	 *
+	 * @param files 		   The collection of final files
+	 * @param folders 		   The folders where the files are
+	 * @param maxFilesRequired The maximum number of files to add to the collection
+	 * @param remainingFiles   The remaining number of files to add
+	 * @param filter 		   The {@link FileFilter} to use to filter the files in the folders
+	 */
+	private static void addFilesFromFolders(List<File> files, File[] folders, int maxFilesRequired, int remainingFiles, FileFilter filter) {
+		int subFoldersCount = 0;
+		int remaining = remainingFiles;
+		while ((subFoldersCount < folders.length) && ! Thread.currentThread().isInterrupted()) {
+			File subFolder = folders[subFoldersCount++];
+			List<File> subFolderFiles = getAllFilesInFolder(subFolder, filter, remaining);
+			files.addAll(subFolderFiles);
+			if (remaining > 0)
+				remaining = maxFilesRequired - files.size();
+			if (maxFilesRequired > 0 && remaining == 0)
+				break;
+		}
 	}
 
 	/**

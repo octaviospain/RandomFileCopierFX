@@ -15,7 +15,6 @@ import static org.testfx.api.FxAssert.*;
 import static org.testfx.api.FxToolkit.*;
 import static org.testfx.matcher.base.NodeMatchers.*;
 
-
 /**
  * @author Octavio Calleya
  * @version 0.2.2

@@ -1,3 +1,19 @@
+/******************************************************************************
+ * Copyright 2016, 2017 Octavio Calleya                                       *
+ *                                                                            *
+ * Licensed under the Apache License, Version 2.0 (the "License");            *
+ * you may not use this file except in compliance with the License.           *
+ * You may obtain a copy of the License at                                    *
+ *                                                                            *
+ * http://www.apache.org/licenses/LICENSE-2.0                                 *
+ *                                                                            *
+ * Unless required by applicable law or agreed to in writing, software        *
+ * distributed under the License is distributed on an "AS IS" BASIS,          *
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.   *
+ * See the License for the specific language governing permissions and        *
+ * limitations under the License.                                             *
+ ******************************************************************************/
+
 package com.transgressoft.randomfilecopier.gui;
 
 import com.transgressoft.randomfilecopier.*;
@@ -175,9 +191,8 @@ public class GuiController {
 
     private void configureMaxFilesTextField() {
         maxFilesTF.addEventFilter(KeyEvent.KEY_TYPED, event -> {
-            if (! event.getCharacter().matches("[0-9]")) {
+            if (! event.getCharacter().matches("[0-9]"))
                 event.consume();
-            }
         });
         maxFilesTF.focusedProperty().addListener(l -> {
             if (! maxFilesTF.isFocused()) {
@@ -193,17 +208,15 @@ public class GuiController {
 
     private void configureMaxBytesTextField() {
         maxBytesTF.addEventFilter(KeyEvent.KEY_TYPED, event -> {
-            if (! event.getCharacter().matches("[0-9]")) {
+            if (! event.getCharacter().matches("[0-9]"))
                 event.consume();
-            }
         });
         maxBytesTF.focusedProperty().addListener(l -> {
             if (! maxBytesTF.isFocused()) {
                 try {
                     long enteredMaxBytes = Long.parseLong(maxBytesTF.getText());
-                    if (destination != null && enteredMaxBytes > destination.getUsableSpace()) {
+                    if (destination != null && enteredMaxBytes > destination.getUsableSpace())
                         maxBytesTF.setText(String.valueOf(destination.getUsableSpace()));
-                    }
                 }
                 catch (NumberFormatException e) {
                     maxBytesTF.setText(destination == null ? "0" : String.valueOf(destination.getUsableSpace()));
