@@ -5,7 +5,7 @@
 # RandomFileCopierFX
 A JavaFX application that copies random files from a source to a destination using [RandomFileCopier](https://github.com/octaviospain/RandomFileCopier "RandomFileCopier")
 
-![RandomFileCopierFX screenshot 1](https://dl.dropboxusercontent.com/u/3596661/copier1.png)
+![RandomFileCopierFX screenshot 1](http://imageshack.com/a/img924/4756/qawXQs.png)
 
 ## Features
 * Limits the number of files to copy
