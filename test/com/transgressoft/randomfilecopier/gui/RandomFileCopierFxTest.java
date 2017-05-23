@@ -217,7 +217,6 @@ public class RandomFileCopierFxTest {
         robot.clickOn("#openSourceBT").type(KeyCode.ESCAPE);
 
         verifyThat("#sourceTF", hasText(""));
-        verify(directoryChooserSpy, times(1)).chooseDirectory();
     }
 
     @Test
@@ -230,16 +229,15 @@ public class RandomFileCopierFxTest {
         robot.clickOn("#openDestinationBT").type(KeyCode.ESCAPE);
 
         verifyThat("#destinationTF", hasText(""));
-        verify(directoryChooserSpy, times(1)).chooseDirectory();
     }
 
     @Test
     @DisplayName ("Write invalid source and destination")
     public void writeInvalidSourceAndDestination(FxRobot robot) {
         verifyThat("#copyStopBT", isDisabled());
-        robot.clickOn("#sourceTF").write("rootfolderthatdoesntexist");
+        robot.clickOn("#sourceTF").write("invalidpath");
 
-        verifyThat("#sourceTF", hasText("rootfolderthatdoesntexist"));
+        verifyThat("#sourceTF", hasText("invalidpath"));
         verifyThat("#copyStopBT", isDisabled());
 
         WaitForAsyncUtils.waitForFxEvents();
@@ -248,9 +246,9 @@ public class RandomFileCopierFxTest {
         robot.clickOn(".button").type(KeyCode.ENTER);
         verifyThat("#sourceTF", hasText(""));
 
-        robot.clickOn("#destinationTF").write("destinationfolerthatdoesntexist");
+        robot.clickOn("#destinationTF").write("invalidpath");
 
-        verifyThat("#destinationTF", hasText("destinationfolerthatdoesntexist"));
+        verifyThat("#destinationTF", hasText("invalidpath"));
         verifyThat("#copyStopBT", isDisabled());
 
         // An Alert dialog is shown informing that an invalid destination was entered
