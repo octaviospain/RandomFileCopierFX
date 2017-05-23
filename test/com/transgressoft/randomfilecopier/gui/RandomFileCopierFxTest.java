@@ -1,37 +1,39 @@
 package com.transgressoft.randomfilecopier.gui;
 
+import com.google.common.io.Files;
 import com.transgressoft.randomfilecopier.gui.GuiController.*;
 import javafx.application.*;
+import javafx.fxml.*;
+import javafx.scene.*;
 import javafx.scene.input.*;
-import org.junit.*;
-import org.junit.rules.*;
+import javafx.stage.*;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.*;
 import org.testfx.api.*;
+import org.testfx.framework.junit5.*;
+import org.testfx.util.*;
 
+import java.io.*;
 import java.nio.file.*;
 
 import static junit.framework.TestCase.*;
 import static org.mockito.Mockito.*;
 import static org.testfx.api.FxAssert.*;
-import static org.testfx.api.FxToolkit.*;
 import static org.testfx.matcher.base.NodeMatchers.*;
 
 /**
  * @author Octavio Calleya
- * @version 0.2.2
+ * @version 0.2.5
  */
+@ExtendWith ({ApplicationExtension.class, MockitoExtension.class})
 public class RandomFileCopierFxTest {
 
-    FxRobot robot = new FxRobot();
-    RandomFileCopierFx application;
     GuiController guiController;
 
-    static Path sourceTestPath;
-    static Path destinationTestPath;
+    Path sourceTestPath = Paths.get("test-resources", "10testfiles");
+    File destination = Files.createTempDir();
 
-    @Rule
-    public TemporaryFolder testFolder = new TemporaryFolder();
-
-    @BeforeClass
+    @BeforeAll
     public static void setupSpec() throws Exception {
         if (Boolean.getBoolean("headless")) {
             System.setProperty("testfx.robot", "glass");
@@ -40,59 +42,52 @@ public class RandomFileCopierFxTest {
             System.setProperty("prism.text", "t2k");
             System.setProperty("java.awt.headless", "true");
         }
-
-        registerPrimaryStage();
-        setupStage(stage -> {
-            stage.show();
-            stage.centerOnScreen();
-        });
-
-        sourceTestPath = Paths.get("test-resources", "10testfiles");
     }
 
-    @Before
-    public void setup() throws Exception {
-        setupApplication(() -> application = new RandomFileCopierFx());
+    @Start
+    public void start(Stage stage) throws Exception {
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/layout.fxml"));
+        Parent root = loader.load();
+        guiController = loader.getController();
 
         // Mock a directory chooser
         DirectoryChooserHelper chooserHelper = mock(DirectoryChooserHelper.class);
         when(chooserHelper.chooseDirectory()).thenReturn(sourceTestPath.toFile());
-
-        guiController = application.getController();
         guiController.setDirectoryChooserHelper(chooserHelper);
-        testFolder.create();
-        destinationTestPath = testFolder.getRoot().toPath();
 
         // Set a clipboard content
-        Platform.runLater(() -> {
-            Clipboard clip = Clipboard.getSystemClipboard();
-            ClipboardContent content = new ClipboardContent();
-            content.putString("notanumber");
-            clip.setContent(content);
-        });
-        Thread.sleep(500);
+        Clipboard clip = Clipboard.getSystemClipboard();
+        ClipboardContent content = new ClipboardContent();
+        content.putString("notanumber");
+        clip.setContent(content);
+
+        stage.setScene(new Scene(root));
+        stage.show();
+        stage.centerOnScreen();
     }
 
-    @After
+    @AfterEach
     public void tearDown() throws Exception {
-        testFolder.delete();
-        assertFalse(testFolder.getRoot().exists());
+        if (destination.exists())
+            destination.delete();
     }
 
     @Test
-    public void typeMoreBytesThanAvailable() {
-        robot.clickOn("#destinationTF").write(destinationTestPath.toAbsolutePath().toString());
-        verifyThat("#destinationTF", hasText(destinationTestPath.toAbsolutePath().toString()));
+    @DisplayName("Type ore bytes than available")
+    public void typeMoreBytesThanAvailable(FxRobot robot) {
+        robot.clickOn("#destinationTF").write(destination.getAbsolutePath());
+        verifyThat("#destinationTF", hasText(destination.getAbsolutePath()));
 
         robot.doubleClickOn("#maxBytesTF");
-        robot.write(String.valueOf(destinationTestPath.toFile().getUsableSpace() + 1));
+        robot.write(String.valueOf(destination.getUsableSpace() + 1));
         robot.clickOn("#logTA");
 
-        verifyThat("#maxBytesTF", hasText(String.valueOf(destinationTestPath.toFile().getUsableSpace())));
+        verifyThat("#maxBytesTF", hasText(String.valueOf(destination.getUsableSpace())));
     }
 
     @Test
-    public void typeInvalidMaxFiles() {
+    @DisplayName ("Type invalid max files")
+    public void typeInvalidMaxFiles(FxRobot robot) {
         robot.doubleClickOn("#maxFilesTF").write("notanumber");
         verifyThat("#maxFilesTF", hasText("0"));
 
@@ -105,7 +100,8 @@ public class RandomFileCopierFxTest {
     }
 
     @Test
-    public void typeInvalidMaxBytes() {
+    @DisplayName ("Type invalid max bytes")
+    public void typeInvalidMaxBytes(FxRobot robot) {
         robot.doubleClickOn("#maxBytesTF").write("notanumber");
         verifyThat("#maxBytesTF", hasText("0"));
 
@@ -119,15 +115,16 @@ public class RandomFileCopierFxTest {
     }
 
     @Test
-    public void copyAllAndAbort() {
+    @DisplayName ("Copy all and abort")
+    public void copyAllAndAbort(FxRobot robot) {
         robot.clickOn("#openSourceBT");
         verifyThat("#sourceTF", hasText(sourceTestPath.toAbsolutePath().toString()));
 
-        robot.clickOn("#destinationTF").write(destinationTestPath.toAbsolutePath().toString());
-        verifyThat("#destinationTF", hasText(destinationTestPath.toAbsolutePath().toString()));
+        robot.clickOn("#destinationTF").write(destination.getAbsolutePath());
+        verifyThat("#destinationTF", hasText(destination.getAbsolutePath()));
 
         robot.doubleClickOn("#maxBytesTF");
-        verifyThat("#maxBytesTF", hasText(String.valueOf(destinationTestPath.toFile().getUsableSpace())));
+        verifyThat("#maxBytesTF", hasText(String.valueOf(destination.getUsableSpace())));
 
         robot.clickOn(guiController.getExtensionsComboBox());
         Platform.runLater(() -> guiController.getExtensionsComboBox().getCheckModel().check(".txt"));
@@ -146,15 +143,16 @@ public class RandomFileCopierFxTest {
     }
 
     @Test
-    public void copyOneFile() {
+    @DisplayName ("Copy one file")
+    public void copyOneFile(FxRobot robot) {
         robot.clickOn("#openSourceBT");
         verifyThat("#sourceTF", hasText(sourceTestPath.toAbsolutePath().toString()));
 
-        robot.clickOn("#destinationTF").write(destinationTestPath.toAbsolutePath().toString());
-        verifyThat("#destinationTF", hasText(destinationTestPath.toAbsolutePath().toString()));
+        robot.clickOn("#destinationTF").write(destination.getAbsolutePath());
+        verifyThat("#destinationTF", hasText(destination.getAbsolutePath()));
 
         robot.doubleClickOn("#maxBytesTF");
-        verifyThat("#maxBytesTF", hasText(String.valueOf(destinationTestPath.toFile().getUsableSpace())));
+        verifyThat("#maxBytesTF", hasText(String.valueOf(destination.getUsableSpace())));
 
         robot.doubleClickOn("#maxFilesTF").write("1");
         verifyThat("#maxFilesTF", hasText("1"));
@@ -167,16 +165,17 @@ public class RandomFileCopierFxTest {
         verifyThat("#copyStopBT", hasText("Copy!"));
 
         robot.clickOn("#copyStopBT");
-        assertTrue(destinationTestPath.toFile().listFiles().length == 1);
+        assertTrue(destination.listFiles().length == 1);
     }
 
     @Test
-    public void copyOneByte() {
+    @DisplayName ("Cope one byte")
+    public void copyOneByte(FxRobot robot) {
         robot.clickOn("#openSourceBT");
         verifyThat("#sourceTF", hasText(sourceTestPath.toAbsolutePath().toString()));
 
-        robot.clickOn("#destinationTF").write(destinationTestPath.toAbsolutePath().toString());
-        verifyThat("#destinationTF", hasText(destinationTestPath.toAbsolutePath().toString()));
+        robot.clickOn("#destinationTF").write(destination.getAbsolutePath());
+        verifyThat("#destinationTF", hasText(destination.getAbsolutePath()));
 
         robot.doubleClickOn("#maxBytesTF").write("1");
         robot.clickOn(guiController.getExtensionsComboBox());
@@ -193,7 +192,8 @@ public class RandomFileCopierFxTest {
     }
 
     @Test
-    public void initialControlStates() {
+    @DisplayName ("Initial control states")
+    public void initialControlStates(FxRobot robot) {
         verifyThat("#openSourceBT", isEnabled());
         verifyThat("#openDestinationBT", isEnabled());
         verifyThat("#copyStopBT", isDisabled());
@@ -208,7 +208,8 @@ public class RandomFileCopierFxTest {
     }
 
     @Test
-    public void openNullSourceDirectory() {
+    @DisplayName ("Open null source")
+    public void openNullSourceDirectory(FxRobot robot) {
         DirectoryChooserHelper directoryChooserSpy = spy(guiController.new DirectoryChooserHelper());
         guiController.setDirectoryChooserHelper(directoryChooserSpy);
         verifyThat("#sourceTF", hasText(""));
@@ -220,7 +221,8 @@ public class RandomFileCopierFxTest {
     }
 
     @Test
-    public void openNullDestinationDirectory() {
+    @DisplayName ("Open null destination")
+    public void openNullDestinationDirectory(FxRobot robot) {
         DirectoryChooserHelper directoryChooserSpy = spy(guiController.new DirectoryChooserHelper());
         guiController.setDirectoryChooserHelper(directoryChooserSpy);
         verifyThat("#destinationTF", hasText(""));
@@ -232,13 +234,15 @@ public class RandomFileCopierFxTest {
     }
 
     @Test
-    public void writeInvalidSourceAndDestination() {
+    @DisplayName ("Write invalid source and destination")
+    public void writeInvalidSourceAndDestination(FxRobot robot) {
         verifyThat("#copyStopBT", isDisabled());
         robot.clickOn("#sourceTF").write("rootfolderthatdoesntexist");
 
         verifyThat("#sourceTF", hasText("rootfolderthatdoesntexist"));
         verifyThat("#copyStopBT", isDisabled());
 
+        WaitForAsyncUtils.waitForFxEvents();
         // An Alert dialog is shown informing that an invalid source was entered
         // I can't test it. Pressing enter closes the window
         robot.clickOn(".button").type(KeyCode.ENTER);
@@ -256,7 +260,8 @@ public class RandomFileCopierFxTest {
     }
 
     @Test
-    public void writeValidSourceAndDestination() {
+    @DisplayName ("Write valid source and destination")
+    public void writeValidSourceAndDestination(FxRobot robot) {
         verifyThat("#copyStopBT", isDisabled());
         robot.clickOn("#sourceTF").write(sourceTestPath.toAbsolutePath().toString());
         verifyThat("#maxBytesTF", hasText("0"));
@@ -265,11 +270,11 @@ public class RandomFileCopierFxTest {
         verifyThat("#sourceTF", hasText(sourceTestPath.toAbsolutePath().toString()));
         verifyThat("#copyStopBT", isDisabled());
 
-        robot.clickOn("#destinationTF").write(destinationTestPath.toAbsolutePath().toString());
-        verifyThat("#destinationTF", hasText(destinationTestPath.toAbsolutePath().toString()));
+        robot.clickOn("#destinationTF").write(destination.getAbsolutePath());
+        verifyThat("#destinationTF", hasText(destination.getAbsolutePath()));
 
         verifyThat("#copyStopBT", isEnabled());
         robot.clickOn("#rootAP");
-        verifyThat("#maxBytesTF", hasText(String.valueOf(destinationTestPath.toFile().getUsableSpace())));
+        verifyThat("#maxBytesTF", hasText(String.valueOf(destination.getUsableSpace())));
     }
 }

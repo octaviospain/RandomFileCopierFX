@@ -35,9 +35,9 @@ public class TransgressoftUtils {
 	private TransgressoftUtils() {}
 
 	/**
-	 * Retrieves a {@link List} with at most <tt>maxFiles</tt> files that are in a folder or
+	 * Retrieves a {@link List} with at most {@code maxFiles} files that are in a folder or
 	 * any of the subfolders in that folder satisfying a condition.
-	 * If <tt>maxFilesRequired</tt> is 0 all the files will be retrieved.
+	 * If {@code maxFilesRequired} is 0 all the files will be retrieved.
 	 *
 	 * @param rootFolder       The folder from within to find the files
 	 * @param filter           The {@link FileFilter} condition
@@ -45,7 +45,7 @@ public class TransgressoftUtils {
 	 *
 	 * @return The list containing all the files
 	 *
-	 * @throws IllegalArgumentException Thrown if <tt>maxFilesRequired</tt> argument is less than zero
+	 * @throws IllegalArgumentException Thrown if {@code maxFilesRequired} argument is less than zero
 	 */
 	public static List<File> getAllFilesInFolder(File rootFolder, FileFilter filter, int maxFilesRequired) {
 		List<File> finalFiles = new ArrayList<>();
@@ -70,16 +70,16 @@ public class TransgressoftUtils {
 	/**
 	 * Add files to a {@link List} depending a {@code maxFilesRequired} parameter.
 	 * <ul>
-	 *     <li>
-	 *         If it's 0, all files are added.
-	 *     </li>
-	 *     <li>
-	 *         If it's greater than the actual number of files, all files are added too.
-	 *     </li>
-	 *     <li>
-	 *         If it's less than the actual number of files, the required number
-	 *         of files are added
-	 *     </li>
+	 * <li>
+	 * If it's 0, all files are added.
+	 * </li>
+	 * <li>
+	 * If it's greater than the actual number of files, all files are added too.
+	 * </li>
+	 * <li>
+	 * If it's less than the actual number of files, the required number
+	 * of files are added
+	 * </li>
 	 * </ul>
 	 *
 	 * @param files            The collection of final files
@@ -90,14 +90,14 @@ public class TransgressoftUtils {
 	 */
 	private static int addFilesDependingMax(List<File> files, File[] subFiles, int maxFilesRequired) {
 		int remainingFiles = maxFilesRequired;
-		if (maxFilesRequired == 0)    						// No max = add all files
+		if (maxFilesRequired == 0)                            // No max = add all files
 			files.addAll(Arrays.asList(subFiles));
-		else if (maxFilesRequired < subFiles.length) {    	// There are more valid files than the required
+		else if (maxFilesRequired < subFiles.length) {        // There are more valid files than the required
 			files.addAll(Arrays.asList(Arrays.copyOfRange(subFiles, 0, maxFilesRequired)));
-			remainingFiles -= files.size();        			// Zero files remaining in the folder
+			remainingFiles -= files.size();                    // Zero files remaining in the folder
 		}
 		else if (subFiles.length > 0) {
-			files.addAll(Arrays.asList(subFiles));   		// Add all valid files
+			files.addAll(Arrays.asList(subFiles));        // Add all valid files
 			remainingFiles -= files.size();
 		}
 		return remainingFiles;
@@ -107,13 +107,14 @@ public class TransgressoftUtils {
 	 * Adds files to a {@link List} from several folders depending of a maximum required files,
 	 * the remaining files to be added, using a {@link FileFilter}.
 	 *
-	 * @param files 		   The collection of final files
-	 * @param folders 		   The folders where the files are
+	 * @param files            The collection of final files
+	 * @param folders          The folders where the files are
 	 * @param maxFilesRequired The maximum number of files to add to the collection
 	 * @param remainingFiles   The remaining number of files to add
-	 * @param filter 		   The {@link FileFilter} to use to filter the files in the folders
+	 * @param filter           The {@link FileFilter} to use to filter the files in the folders
 	 */
-	private static void addFilesFromFolders(List<File> files, File[] folders, int maxFilesRequired, int remainingFiles, FileFilter filter) {
+	private static void addFilesFromFolders(List<File> files, File[] folders, int maxFilesRequired, int remainingFiles,
+			FileFilter filter) {
 		int subFoldersCount = 0;
 		int remaining = remainingFiles;
 		while ((subFoldersCount < folders.length) && ! Thread.currentThread().isInterrupted()) {
@@ -128,52 +129,26 @@ public class TransgressoftUtils {
 	}
 
 	/**
-	 * Returns a {@link String} representing the given <tt>bytes</tt>, with a textual representation
-	 * depending if the given amount can be represented as KB, MB, GB or TB
-	 *
-	 * @param bytes The <tt>bytes</tt> to be represented
-	 * @return The <tt>String</tt> that represents the given bytes
-	 * @throws IllegalArgumentException Thrown if <tt>bytes</tt> is negative
-	 */
-	public static String byteSizeString(long bytes) {
-		if(bytes < 0)
-			throw new IllegalArgumentException("Given bytes can't be less than zero");
-
-		String sizeText;
-		String[] bytesUnits = {"B", "KB", "MB", "GB", "TB"};
-		long bytesAmount = bytes;
-		short binRemainder;
-		float decRemainder = 0;
-		int u;
-		for(u = 0; bytesAmount > 1024 && u < bytesUnits.length; u++) {
-			bytesAmount /= 1024;
-			binRemainder = (short) (bytesAmount % 1024);
-			decRemainder += Float.valueOf((float) binRemainder / 1024);
-		}
-		String remainderStr = String.format("%f", decRemainder).substring(2);
-		sizeText = bytesAmount + (remainderStr.equals("0") ? "" : ","+remainderStr) + " " + bytesUnits[u];
-		return sizeText;
-	}
-
-	/**
-	 * Returns a {@link String} representing the given <tt>bytes</tt>, with a textual representation
+	 * Returns a {@link String} representing the given {@code bytes}, with a textual representation
 	 * depending if the given amount can be represented as KB, MB, GB or TB, limiting the number
 	 * of decimals, if there are any
 	 *
-	 * @param bytes The <tt>bytes</tt> to be represented
+	 * @param bytes       The {@code bytes} to be represented
 	 * @param numDecimals The maximum number of decimals to be shown after the comma
-	 * @return The <tt>String</tt> that represents the given bytes
-	 * @throws IllegalArgumentException Thrown if <tt>bytes</tt> or <tt>numDecimals</tt> are negative
+	 *
+	 * @return The {@code String} that represents the given bytes
+	 *
+	 * @throws IllegalArgumentException Thrown if {@code bytes} or {@code numDecimals} are negative
 	 */
 	public static String byteSizeString(long bytes, int numDecimals) {
-		if(numDecimals < 0)
+		if (numDecimals < 0)
 			throw new IllegalArgumentException("Given number of decimals can't be less than zero");
 
 		String byteSizeString = byteSizeString(bytes);
-		String decimalSharps = "";
-		for(int n = 0; n < numDecimals; n++)
-			decimalSharps += "#";
-		DecimalFormat decimalFormat = new DecimalFormat("#." + decimalSharps);
+		StringBuilder decimalSharps = new StringBuilder();
+		for (int n = 0; n < numDecimals; n++)
+			decimalSharps.append("#");
+		DecimalFormat decimalFormat = new DecimalFormat("#." + decimalSharps.toString());
 		decimalFormat.setRoundingMode(RoundingMode.CEILING);
 
 		int unitPos = byteSizeString.lastIndexOf(' ');
@@ -184,6 +159,35 @@ public class TransgressoftUtils {
 		return byteSizeString;
 	}
 
+	/**
+	 * Returns a {@link String} representing the given {@code bytes}, with a textual representation
+	 * depending if the given amount can be represented as KB, MB, GB or TB
+	 *
+	 * @param bytes The {@code bytes} to be represented
+	 *
+	 * @return The {@code String} that represents the given bytes
+	 *
+	 * @throws IllegalArgumentException Thrown if {@code bytes} is negative
+	 */
+	public static String byteSizeString(long bytes) {
+		if (bytes < 0)
+			throw new IllegalArgumentException("Given bytes can't be less than zero");
+
+		String sizeText;
+		String[] bytesUnits = {"B", "KB", "MB", "GB", "TB"};
+		long bytesAmount = bytes;
+		short binRemainder;
+		float decRemainder = 0;
+		int u;
+		for (u = 0; bytesAmount > 1024 && u < bytesUnits.length; u++) {
+			bytesAmount /= 1024;
+			binRemainder = (short) (bytesAmount % 1024);
+			decRemainder += Float.valueOf((float) binRemainder / 1024);
+		}
+		String remainderStr = String.format("%f", decRemainder).substring(2);
+		sizeText = bytesAmount + ("0".equals(remainderStr) ? "" : "," + remainderStr) + " " + bytesUnits[u];
+		return sizeText;
+	}
 
 	/**
 	 * Ensures that the file name given is unique in the target directory, appending
@@ -207,7 +211,6 @@ public class TransgressoftUtils {
 		}
 		return newName;
 	}
-
 
 	/**
 	 * This class implements <code>{@link java.io.FileFilter}</code> to

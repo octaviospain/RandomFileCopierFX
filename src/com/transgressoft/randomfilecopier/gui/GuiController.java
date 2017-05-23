@@ -33,7 +33,7 @@ import java.io.*;
 
 /**
  * @author Octavio Calleya
- * @version 0.2.2
+ * @version 0.2.5
  */
 public class GuiController {
 
@@ -65,12 +65,10 @@ public class GuiController {
     private TextArea logTA;
     @FXML
     private GridPane optionsGP;
-    private HBox extensionsHBox;
     private CheckComboBox<String> extensionsCCB;
 
     private File source;
     private File destination;
-    private ObservableList<String> extensionsList;
     private RandomFileCopierThread copyThread;
     private PrintStream textAreaPrinter;
     private boolean sourceChanged;
@@ -99,14 +97,14 @@ public class GuiController {
     }
 
     private void addExtensionsCheckComboBox() {
-        extensionsList = FXCollections.observableArrayList(EXTENSIONS);
+        ObservableList<String> extensionsList = FXCollections.observableArrayList(EXTENSIONS);
         extensionsCCB = new CheckComboBox<>(extensionsList);
         extensionsCCB.setPrefWidth(90);
 
         Label extensionsLabel = new Label("Extensions:");
         extensionsLabel.setPadding(new Insets(0, 10, 0, 10));
 
-        extensionsHBox = new HBox(extensionsLabel, extensionsCCB);
+        HBox extensionsHBox = new HBox(extensionsLabel, extensionsCCB);
         extensionsHBox.setAlignment(Pos.CENTER);
         HBox.setHgrow(extensionsCCB, Priority.SOMETIMES);
         HBox.setMargin(extensionsCCB, new Insets(0, 10, 0, 10));
