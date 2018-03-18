@@ -16,33 +16,13 @@
 
 package com.transgressoft.randomfilecopier.gui;
 
-import javafx.application.*;
-import javafx.fxml.*;
-import javafx.scene.*;
-import javafx.scene.layout.*;
-import javafx.stage.*;
+import javafx.scene.control.Alert.*;
 
 /**
- * Graphic user interface class.
- *
  * @author Octavio Calleya
  * @version 0.2.6
  */
-public class RandomFileCopierFx extends Application {
+public interface AlertHelper {
 
-	public static void main(String[] args) {
-		launch(args);
-	}
-
-	@Override
-	public void start(Stage primaryStage) throws Exception {
-        AnchorPane rootAP = FXMLLoader.load(getClass().getResource("/layout.fxml"));
-
-		Scene scene = new Scene(rootAP, 700, 400);
-		primaryStage.setMinHeight(450);
-		primaryStage.setMinWidth(700);
-		primaryStage.setTitle("Random File Copier FX");
-		primaryStage.setScene(scene);
-		primaryStage.show();
-	}
+    AlertWrapper createAlert(AlertType typy, String title, String content);
 }

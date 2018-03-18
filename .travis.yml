@@ -10,7 +10,7 @@ jdk:
 
 sudo: false
 
-script: mvn verify
+script: mvn clean test
 
 addons:
   apt:

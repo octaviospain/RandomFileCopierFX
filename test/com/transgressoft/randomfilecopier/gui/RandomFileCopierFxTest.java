@@ -1,40 +1,48 @@
 package com.transgressoft.randomfilecopier.gui;
 
 import com.google.common.io.Files;
-import com.transgressoft.randomfilecopier.gui.GuiController.*;
-import javafx.application.*;
-import javafx.fxml.*;
-import javafx.scene.*;
-import javafx.scene.input.*;
-import javafx.stage.*;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.*;
+import org.mockito.*;
 import org.testfx.api.*;
 import org.testfx.framework.junit5.*;
-import org.testfx.util.*;
 
 import java.io.*;
 import java.nio.file.*;
+import javafx.application.*;
+import javafx.fxml.*;
+import javafx.scene.*;
+import javafx.scene.control.Alert.*;
+import javafx.scene.input.*;
+import javafx.stage.*;
 
 import static junit.framework.TestCase.*;
+import static org.awaitility.Awaitility.*;
 import static org.mockito.Mockito.*;
 import static org.testfx.api.FxAssert.*;
 import static org.testfx.matcher.base.NodeMatchers.*;
 
 /**
  * @author Octavio Calleya
- * @version 0.2.5
  */
 @ExtendWith ({ApplicationExtension.class, MockitoExtension.class})
 public class RandomFileCopierFxTest {
 
-    GuiController guiController;
+    Controller controller;
+    Parent root;
 
     Path sourceTestPath = Paths.get("test-resources", "10testfiles");
     File destination = Files.createTempDir();
+    
+    @Mock
+    DirectoryChooserHelper chooserHelper;
+    @Mock
+    AlertHelper alertHelper;
+    @Mock
+    AlertWrapper alert;
 
     @BeforeAll
-    public static void setupSpec() throws Exception {
+    public static void beforeAll() {
         if (Boolean.getBoolean("headless")) {
             System.setProperty("testfx.robot", "glass");
             System.setProperty("testfx.headless", "true");
@@ -47,15 +55,9 @@ public class RandomFileCopierFxTest {
     @Start
     public void start(Stage stage) throws Exception {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/layout.fxml"));
-        Parent root = loader.load();
-        guiController = loader.getController();
+        root = loader.load();
+        controller = loader.getController();
 
-        // Mock a directory chooser
-        DirectoryChooserHelper chooserHelper = mock(DirectoryChooserHelper.class);
-        when(chooserHelper.chooseDirectory()).thenReturn(sourceTestPath.toFile());
-        guiController.setDirectoryChooserHelper(chooserHelper);
-
-        // Set a clipboard content
         Clipboard clip = Clipboard.getSystemClipboard();
         ClipboardContent content = new ClipboardContent();
         content.putString("notanumber");
@@ -66,8 +68,17 @@ public class RandomFileCopierFxTest {
         stage.centerOnScreen();
     }
 
+    @BeforeEach
+    void beforeEach() {
+        when(chooserHelper.chooseDirectory()).thenReturn(sourceTestPath.toFile());
+        controller.setDirectoryChooserHelper(chooserHelper);
+        doNothing().when(alert).showAndWait();
+        when(alertHelper.createAlert(any(), any(), any())).thenReturn(alert);
+        controller.setAlertHelper(alertHelper);
+    }
+
     @AfterEach
-    public void tearDown() throws Exception {
+    public void afterEach() {
         if (destination.exists())
             destination.delete();
     }
@@ -126,20 +137,18 @@ public class RandomFileCopierFxTest {
         robot.doubleClickOn("#maxBytesTF");
         verifyThat("#maxBytesTF", hasText(String.valueOf(destination.getUsableSpace())));
 
-        robot.clickOn(guiController.getExtensionsComboBox());
-        Platform.runLater(() -> guiController.getExtensionsComboBox().getCheckModel().check(".txt"));
+        robot.clickOn(controller.getExtensionsComboBox());
+        Platform.runLater(() -> controller.getExtensionsComboBox().getCheckModel().check(".txt"));
 
         verifyThat("#logTA", hasText(""));
         verifyThat("#copyStopBT", isEnabled());
 
         verifyThat("#copyStopBT", hasText("Copy!"));
 
-        // Fails because the thread is faster than the test
-        // The button shuld change the text to "Abort", and clicking aborts the copy
-//        robot.clickOn("#copyStopBT");
-//        verifyThat("#copyStopBT", hasText("Abort"));
-//        robot.clickOn("#copyStopBT");
-//        verifyThat("#copyStopBT", hasText("Copy!"));
+        robot.clickOn("#copyStopBT");
+        await().untilAsserted(() -> verifyThat("#copyStopBT", hasText("Abort")));
+        robot.clickOn("#copyStopBT");
+        await().untilAsserted(() -> verifyThat("#copyStopBT", hasText("Copy!")));
     }
 
     @Test
@@ -157,15 +166,15 @@ public class RandomFileCopierFxTest {
         robot.doubleClickOn("#maxFilesTF").write("1");
         verifyThat("#maxFilesTF", hasText("1"));
 
-        robot.clickOn(guiController.getExtensionsComboBox());
-        Platform.runLater(() -> guiController.getExtensionsComboBox().getCheckModel().check(".txt"));
+        robot.clickOn(controller.getExtensionsComboBox());
+        Platform.runLater(() -> controller.getExtensionsComboBox().getCheckModel().check(".txt"));
 
         verifyThat("#logTA", hasText(""));
         verifyThat("#copyStopBT", isEnabled());
         verifyThat("#copyStopBT", hasText("Copy!"));
 
         robot.clickOn("#copyStopBT");
-        assertTrue(destination.listFiles().length == 1);
+        assertEquals(1, destination.listFiles().length);
     }
 
     @Test
@@ -178,8 +187,8 @@ public class RandomFileCopierFxTest {
         verifyThat("#destinationTF", hasText(destination.getAbsolutePath()));
 
         robot.doubleClickOn("#maxBytesTF").write("1");
-        robot.clickOn(guiController.getExtensionsComboBox());
-        Platform.runLater(() -> guiController.getExtensionsComboBox().getCheckModel().check(".txt"));
+        robot.clickOn(controller.getExtensionsComboBox());
+        Platform.runLater(() -> controller.getExtensionsComboBox().getCheckModel().check(".txt"));
 
         verifyThat("#maxBytesTF", hasText("1"));
         verifyThat("#logTA", hasText(""));
@@ -210,8 +219,8 @@ public class RandomFileCopierFxTest {
     @Test
     @DisplayName ("Open null source")
     public void openNullSourceDirectory(FxRobot robot) {
-        DirectoryChooserHelper directoryChooserSpy = spy(guiController.new DirectoryChooserHelper());
-        guiController.setDirectoryChooserHelper(directoryChooserSpy);
+        when(chooserHelper.chooseDirectory()).thenReturn(null);
+        controller.setDirectoryChooserHelper(chooserHelper);
         verifyThat("#sourceTF", hasText(""));
 
         robot.clickOn("#openSourceBT").type(KeyCode.ESCAPE);
@@ -222,8 +231,8 @@ public class RandomFileCopierFxTest {
     @Test
     @DisplayName ("Open null destination")
     public void openNullDestinationDirectory(FxRobot robot) {
-        DirectoryChooserHelper directoryChooserSpy = spy(guiController.new DirectoryChooserHelper());
-        guiController.setDirectoryChooserHelper(directoryChooserSpy);
+        when(chooserHelper.chooseDirectory()).thenReturn(null);
+        controller.setDirectoryChooserHelper(chooserHelper);
         verifyThat("#destinationTF", hasText(""));
 
         robot.clickOn("#openDestinationBT").type(KeyCode.ESCAPE);
@@ -239,21 +248,18 @@ public class RandomFileCopierFxTest {
 
         verifyThat("#sourceTF", hasText("invalidpath"));
         verifyThat("#copyStopBT", isDisabled());
-
-        WaitForAsyncUtils.waitForFxEvents();
-        // An Alert dialog is shown informing that an invalid source was entered
-        // I can't test it. Pressing enter closes the window
-        robot.clickOn(".button").type(KeyCode.ENTER);
+        robot.clickOn("#destinationTF");
+        verify(alertHelper).createAlert(AlertType.WARNING, "Warning", "Source directory doesn't exist or is not a directory");
+        verify(alert).showAndWait();
         verifyThat("#sourceTF", hasText(""));
 
-        robot.clickOn("#destinationTF").write("invalidpath");
+        robot.doubleClickOn("#destinationTF").write("invalidpath");
 
         verifyThat("#destinationTF", hasText("invalidpath"));
         verifyThat("#copyStopBT", isDisabled());
-
-        // An Alert dialog is shown informing that an invalid destination was entered
-        // I can't test it. Pressing enter closes the window
-        robot.clickOn(".button").type(KeyCode.ENTER);
+        robot.clickOn("#sourceTF");
+        verify(alertHelper).createAlert(AlertType.WARNING, "Warning", "Target directory doesn't exist or is not a directory");
+        verify(alert, times(2)).showAndWait();
         verifyThat("#destinationTF", hasText(""));
     }
 

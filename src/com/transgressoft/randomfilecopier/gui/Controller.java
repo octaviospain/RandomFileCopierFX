@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 2016, 2017 Octavio Calleya                                       *
+ * Copyright 2016-2018 Octavio Calleya                                        *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -17,6 +17,9 @@
 package com.transgressoft.randomfilecopier.gui;
 
 import com.transgressoft.randomfilecopier.*;
+import org.controlsfx.control.*;
+
+import java.io.*;
 import javafx.application.*;
 import javafx.beans.binding.*;
 import javafx.collections.*;
@@ -27,15 +30,12 @@ import javafx.scene.control.Alert.*;
 import javafx.scene.input.*;
 import javafx.scene.layout.*;
 import javafx.stage.*;
-import org.controlsfx.control.*;
-
-import java.io.*;
 
 /**
  * @author Octavio Calleya
- * @version 0.2.5
+ * @version 0.2.6
  */
-public class GuiController {
+public class Controller {
 
     private static final String[] EXTENSIONS = {".txt", ".xml", ".pdf", ".mp3", ".wav", ".flac", ".m4a", ".jpg", ".png",
                                                 ".bmp", ".avi", ".mpg", ".java", ".c", ".cpp", ".py", ".html", ".css",
@@ -74,6 +74,7 @@ public class GuiController {
     private boolean sourceChanged;
     private boolean destinationChanged;
     private DirectoryChooserHelper directoryChooserHelper;
+    private AlertHelper alertHelper;
     private RandomFileCopier copier;
 
     @FXML
@@ -85,7 +86,8 @@ public class GuiController {
         configureDestinationTextField();
         configureMaxFilesTextField();
         configureMaxBytesTextField();
-        setDirectoryChooserHelper(new DirectoryChooserHelper());
+        setDirectoryChooserHelper(new DirectoryChooserHelperImpl());
+        setAlertHelper(new AlertHelperImpl());
     }
 
     CheckComboBox<String> getExtensionsComboBox() {
@@ -96,9 +98,14 @@ public class GuiController {
         this.directoryChooserHelper = directoryChooserHelper;
     }
 
+    void setAlertHelper(AlertHelper alertHelper) {
+        this.alertHelper = alertHelper;
+    }
+
     private void addExtensionsCheckComboBox() {
         ObservableList<String> extensionsList = FXCollections.observableArrayList(EXTENSIONS);
         extensionsCCB = new CheckComboBox<>(extensionsList);
+        extensionsCCB.setId("extensionsCCB");
         extensionsCCB.setPrefWidth(90);
 
         Label extensionsLabel = new Label("Extensions:");
@@ -245,9 +252,7 @@ public class GuiController {
     }
 
     private void showWarningDialog(String message) {
-        Alert alert = new Alert(AlertType.WARNING);
-        alert.setTitle("Warning");
-        alert.setContentText(message);
+        AlertWrapper alert = alertHelper.createAlert(AlertType.WARNING, "Warning", message);
         alert.showAndWait();
     }
 
@@ -283,12 +288,37 @@ public class GuiController {
         }
     }
 
-    protected class DirectoryChooserHelper {
+    private class DirectoryChooserHelperImpl implements DirectoryChooserHelper {
 
-        protected File chooseDirectory() {
+        @Override
+        public File chooseDirectory() {
             DirectoryChooser chooser = new DirectoryChooser();
             chooser.setTitle("Choose folder");
             return chooser.showDialog(logTA.getScene().getWindow());
+        }
+    }
+
+    private class AlertHelperImpl implements AlertHelper {
+
+        @Override
+        public AlertWrapper createAlert(AlertType type, String title, String content) {
+            return new AlertWrapperImpl(type, title, content);
+        }
+    }
+
+    private class AlertWrapperImpl implements AlertWrapper {
+
+        private Alert alert;
+
+        public AlertWrapperImpl(AlertType type, String title, String content) {
+            alert = new Alert(type);
+            alert.setTitle(title);
+            alert.setContentText(content);
+        }
+
+        @Override
+        public void showAndWait() {
+            alert.showAndWait();
         }
     }
 }

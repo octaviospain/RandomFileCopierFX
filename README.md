@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/octaviospain/RandomFileCopierFX.svg?branch=master)](https://travis-ci.org/octaviospain/RandomFileCopierFX)
 [![codecov](https://codecov.io/gh/octaviospain/RandomFileCopierFX/branch/master/graph/badge.svg)](https://codecov.io/gh/octaviospain/RandomFileCopierFX)
-[![license](https://img.shields.io/badge/license-Apache 2-brightgreen.svg)](https://github.com/octaviospain/RandomFileCopierFX/blob/master/LICENSE.txt)
+[![license](https://img.shields.io/badge/license-Apache%202-brightgreen.svg)](https://github.com/octaviospain/RandomFileCopierFX/blob/master/LICENSE.txt)
 
 # RandomFileCopierFX
 A JavaFX application that copies random files from a source to a destination using [RandomFileCopier](https://github.com/octaviospain/RandomFileCopier "RandomFileCopier")
