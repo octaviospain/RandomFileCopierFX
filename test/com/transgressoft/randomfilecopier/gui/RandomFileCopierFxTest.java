@@ -147,8 +147,6 @@ public class RandomFileCopierFxTest {
 
         robot.clickOn("#copyStopBT");
         await().untilAsserted(() -> verifyThat("#copyStopBT", hasText("Abort")));
-        robot.clickOn("#copyStopBT");
-        await().untilAsserted(() -> verifyThat("#copyStopBT", hasText("Copy!")));
     }
 
     @Test
